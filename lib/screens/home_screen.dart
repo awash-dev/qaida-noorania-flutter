@@ -29,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _page - 1);
-    _loadPageAudio(_page, autoPlay: false);
 
     _player.positionStream.listen((pos) {
       if (mounted) setState(() => _position = pos);
@@ -42,7 +41,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     _player.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
-        if (mounted) setState(() => _playing = false);
+        if (mounted) {
+          setState(() {
+            _playing = false;
+            _position = Duration.zero;
+          });
+        }
       }
     });
   }
@@ -63,9 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _player.stop();
       await _player.setAsset(_audioPath(page));
       await _player.setLoopMode(_looping ? LoopMode.one : LoopMode.off);
-      if (autoPlay) {
-        await _player.play();
-      }
+      if (autoPlay) await _player.play();
     } catch (e) {
       debugPrint('Audio error: $e');
     } finally {
@@ -80,8 +82,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _page = page;
       _pickerVisible = false;
+      _position = Duration.zero;
+      _duration = Duration.zero;
     });
-    if (_pageController.hasClients && (_pageController.page?.round() ?? 0) != page - 1) {
+    if (_pageController.hasClients &&
+        (_pageController.page?.round() ?? 0) != page - 1) {
       _pageController.jumpToPage(page - 1);
     }
     await _loadPageAudio(page, autoPlay: wasPlaying);
@@ -94,6 +99,8 @@ class _HomeScreenState extends State<HomeScreen> {
     await _player.stop();
     setState(() {
       _page = targetPage;
+      _position = Duration.zero;
+      _duration = Duration.zero;
     });
     await _loadPageAudio(targetPage, autoPlay: wasPlaying);
   }
@@ -160,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
         value: SystemUiOverlayStyle.light,
         child: Stack(
           children: [
-            // Page image (with PageView for swiping)
+            // ── Page image with swipe ──────────────────────────────────
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -171,35 +178,34 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFFAF6E8),
-                  borderRadius: BorderRadius.circular(_controlsVisible ? 16 : 0),
+                  borderRadius:
+                      BorderRadius.circular(_controlsVisible ? 16 : 0),
                   border: _controlsVisible
-                      ? Border.all(color: const Color(0x38D4AF37), width: 1.2)
+                      ? Border.all(
+                          color: const Color(0x38D4AF37), width: 1.2)
                       : null,
                   boxShadow: _controlsVisible
                       ? const [
                           BoxShadow(
                               color: Colors.black45,
                               blurRadius: 14,
-                              offset: Offset(0, 10)),
+                              offset: Offset(0, 10))
                         ]
                       : null,
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(_controlsVisible ? 16 : 0),
+                  borderRadius:
+                      BorderRadius.circular(_controlsVisible ? 16 : 0),
                   child: PageView.builder(
                     controller: _pageController,
                     itemCount: _total,
                     onPageChanged: _onPageSwiped,
                     itemBuilder: (context, index) {
-                      final pageNum = index + 1;
                       return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _controlsVisible = !_controlsVisible;
-                          });
-                        },
+                        onTap: () => setState(
+                            () => _controlsVisible = !_controlsVisible),
                         child: Image.asset(
-                          _imagePath(pageNum),
+                          _imagePath(index + 1),
                           fit: BoxFit.contain,
                           width: double.infinity,
                           height: double.infinity,
@@ -211,27 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Loading overlay
-            if (_loadingAudio)
-              Positioned.fill(
-                child: Container(
-                  color: const Color(0xA60a1912),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: Color(0xFFD4AF37)),
-                      SizedBox(height: 10),
-                      Text('Loading…',
-                          style: TextStyle(
-                              color: Color(0xFFD4AF37),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Top bar
+            // ── Top bar ───────────────────────────────────────────────
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -275,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Player panel
+            // ── Player panel ──────────────────────────────────────────
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -285,13 +271,11 @@ class _HomeScreenState extends State<HomeScreen> {
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 250),
                 opacity: _controlsVisible ? 1.0 : 0.0,
-                child: Center(
-                  child: _buildPlayerPanel(),
-                ),
+                child: _buildPlayerPanel(),
               ),
             ),
 
-            // Page picker modal
+            // ── Page picker modal ─────────────────────────────────────
             if (_pickerVisible) _buildPicker(padding),
           ],
         ),
@@ -317,7 +301,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPlayerPanel() {
     final progress = _duration.inMilliseconds > 0
-        ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0)
+        ? (_position.inMilliseconds / _duration.inMilliseconds)
+            .clamp(0.0, 1.0)
         : 0.0;
 
     return Container(
@@ -327,13 +312,14 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: const Color(0x38D4AF37), width: 1.2),
         boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 12, offset: Offset(0, 4))
+          BoxShadow(
+              color: Colors.black45, blurRadius: 12, offset: Offset(0, 4))
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Progress Slider
+          // ── Slider ──
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: const Color(0xFFD4AF37),
@@ -341,7 +327,8 @@ class _HomeScreenState extends State<HomeScreen> {
               thumbColor: const Color(0xFFD4AF37),
               overlayColor: const Color(0x22D4AF37),
               trackHeight: 3.5,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+              thumbShape:
+                  const RoundSliderThumbShape(enabledThumbRadius: 7),
             ),
             child: Slider(
               value: progress,
@@ -352,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Time display
+          // ── Time row ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Row(
@@ -363,37 +350,44 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Color(0xFFD4AF37),
                         fontSize: 11,
                         fontWeight: FontWeight.w600)),
-                Text(_formatTime(_duration),
-                    style: const TextStyle(
-                        color: Color(0x99D4AF37),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500)),
+                if (_loadingAudio)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFD4AF37),
+                      strokeWidth: 1.5,
+                    ),
+                  )
+                else
+                  Text(_formatTime(_duration),
+                      style: const TextStyle(
+                          color: Color(0x99D4AF37),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500)),
               ],
             ),
           ),
 
           const SizedBox(height: 10),
 
-          // Controls Row
+          // ── Controls row ──
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Loop toggle
+              // Loop
               _iconBtn(
                 icon: Icons.repeat,
                 onTap: _handleLoop,
                 active: _looping,
-                size: 22,
               ),
-
               // -10s
               _labeledIconBtn(
                 icon: Icons.replay_10,
                 label: '-10s',
                 onTap: _jumpBackward,
               ),
-
-              // Prev page
+              // Prev
               IconButton(
                 onPressed: _page > 1 ? () => _goTo(_page - 1) : null,
                 icon: Icon(
@@ -405,8 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 padding: EdgeInsets.zero,
               ),
-
-              // Play / Pause (big centre button)
+              // Play / Pause
               GestureDetector(
                 onTap: _handlePlayPause,
                 child: Container(
@@ -422,15 +415,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           offset: Offset(0, 4))
                     ],
                   ),
-                  child: Icon(
-                    _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    color: const Color(0xFF0a1912),
-                    size: 34,
-                  ),
+                  child: _loadingAudio
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF0a1912),
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Icon(
+                          _playing
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          color: const Color(0xFF0a1912),
+                          size: 34,
+                        ),
                 ),
               ),
-
-              // Next page
+              // Next
               IconButton(
                 onPressed: _page < _total ? () => _goTo(_page + 1) : null,
                 icon: Icon(
@@ -442,20 +444,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 padding: EdgeInsets.zero,
               ),
-
               // +10s
               _labeledIconBtn(
                 icon: Icons.forward_10,
                 label: '+10s',
                 onTap: _jumpForward,
               ),
-
               // Stop
               _iconBtn(
                 icon: Icons.stop_rounded,
                 onTap: _handleStop,
                 active: false,
-                size: 22,
               ),
             ],
           ),
@@ -464,7 +463,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _iconBtn({required IconData icon, required VoidCallback onTap, required bool active, double size = 22}) {
+  Widget _iconBtn({
+    required IconData icon,
+    required VoidCallback onTap,
+    required bool active,
+    double size = 22,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -474,14 +478,20 @@ class _HomeScreenState extends State<HomeScreen> {
           color: active ? const Color(0xFFD4AF37) : Colors.white10,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon,
-            color: active ? const Color(0xFF0a1912) : const Color(0xFFD4AF37),
-            size: size),
+        child: Icon(
+          icon,
+          color: active ? const Color(0xFF0a1912) : const Color(0xFFD4AF37),
+          size: size,
+        ),
       ),
     );
   }
 
-  Widget _labeledIconBtn({required IconData icon, required String label, required VoidCallback onTap}) {
+  Widget _labeledIconBtn({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -514,10 +524,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.55),
-              padding: EdgeInsets.fromLTRB(16, 12, 16, padding.bottom + 12),
+              padding:
+                  EdgeInsets.fromLTRB(16, 12, 16, padding.bottom + 12),
               decoration: const BoxDecoration(
                 color: Color(0xFF0f2519),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(28)),
                 border: Border(
                   top: BorderSide(color: Color(0x33D4AF37), width: 1.5),
                   left: BorderSide(color: Color(0x33D4AF37), width: 1.5),

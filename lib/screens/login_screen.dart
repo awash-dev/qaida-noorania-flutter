@@ -14,6 +14,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
   bool _showPassword = false;
   bool _loading = false;
   String _error = '';
@@ -21,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -51,16 +53,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final padding = MediaQuery.of(context).padding;
-
     return Scaffold(
       backgroundColor: const Color(0xFF0a1912),
+      resizeToAvoidBottomInset: true,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Stack(
           children: [
-            // Background image
+            // Background image — always full screen
             Positioned.fill(
               child: Image.asset(
                 'assets/images/login.jpg',
@@ -73,50 +73,55 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             // Top gradient
             Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 160,
+              top: 0, left: 0, right: 0, height: 160,
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF0a1912),
-                      Color(0xB20a1912),
-                      Colors.transparent
-                    ],
+                    colors: [Color(0xFF0a1912), Color(0xB20a1912), Colors.transparent],
                   ),
                 ),
               ),
             ),
             // Bottom gradient
             Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 280,
+              bottom: 0, left: 0, right: 0, height: 280,
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Color(0xD90a1912),
-                      Color(0xFF0a1912)
-                    ],
+                    colors: [Colors.transparent, Color(0xD90a1912), Color(0xFF0a1912)],
                   ),
                 ),
               ),
             ),
-            // Card
-            Positioned(
-              bottom: bottom + padding.bottom + 32,
-              left: 16,
-              right: 16,
-              child: _buildCard(),
+            // Scrollable content — moves up when keyboard opens
+            SafeArea(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height -
+                        MediaQuery.of(context).padding.top -
+                        MediaQuery.of(context).padding.bottom,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: _buildCard(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -143,23 +148,16 @@ class _LoginScreenState extends State<LoginScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFFD4AF37), width: 2),
               boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
               ],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(40),
-              child: Image.asset(
-                'assets/images/icon.jpg',
-                fit: BoxFit.cover,
-              ),
+              child: Image.asset('assets/images/icon.jpg', fit: BoxFit.cover),
             ),
           ),
           const SizedBox(height: 12),
-          // App Title
+          // App title
           const Text(
             'القاعدة النورانية',
             style: TextStyle(
@@ -170,6 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 24),
+
           // Password input
           Container(
             height: 54,
@@ -185,8 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.lock_outline,
-                    color: Color(0xFFC5A880), size: 20),
+                const Icon(Icons.lock_outline, color: Color(0xFFC5A880), size: 20),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
@@ -197,6 +195,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       border: InputBorder.none,
                       hintText: 'Enter password...',
                       hintStyle: TextStyle(color: Color(0x66C5A880)),
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
                     ),
                     onSubmitted: (_) => _handleLogin(),
                     textInputAction: TextInputAction.go,
@@ -206,12 +206,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 GestureDetector(
                   onTap: () => setState(() => _showPassword = !_showPassword),
-                  child: Icon(
-                    _showPassword
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: const Color(0xFFC5A880),
-                    size: 20,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: const Color(0xFFC5A880),
+                      size: 20,
+                    ),
                   ),
                 ),
               ],
@@ -222,12 +223,14 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.error_outline,
-                    color: Color(0xFFFF6B6B), size: 14),
+                const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 14),
                 const SizedBox(width: 4),
-                Text(_error,
-                    style: const TextStyle(
-                        color: Color(0xFFFF6B6B), fontSize: 12)),
+                Expanded(
+                  child: Text(
+                    _error,
+                    style: const TextStyle(color: Color(0xFFFF6B6B), fontSize: 12),
+                  ),
+                ),
               ],
             ),
           ],
@@ -242,25 +245,24 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: _loading ? null : _handleLogin,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD4AF37),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                disabledBackgroundColor: const Color(0x80D4AF37),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 elevation: 4,
                 shadowColor: const Color(0xFFD4AF37),
               ),
               child: _loading
-                  ? const CircularProgressIndicator(
-                      color: Color(0xFF0f3425), strokeWidth: 2)
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(color: Color(0xFF0f3425), strokeWidth: 2),
+                    )
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('Enter',
-                            style: TextStyle(
-                                color: Color(0xFF0f3425),
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
+                            style: TextStyle(color: Color(0xFF0f3425), fontSize: 16, fontWeight: FontWeight.bold)),
                         SizedBox(width: 8),
-                        Icon(Icons.arrow_forward,
-                            color: Color(0xFF0f3425), size: 18),
+                        Icon(Icons.arrow_forward, color: Color(0xFF0f3425), size: 18),
                       ],
                     ),
             ),
@@ -275,10 +277,9 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const TextSpan(text: 'developed by '),
                 WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
                   child: GestureDetector(
-                    onTap: () async {
-                      // Launch URL
-                    },
+                    onTap: () {},
                     child: const Text(
                       'Awash Dev',
                       style: TextStyle(
