@@ -31,10 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = 'Please enter the password');
       return;
     }
-    setState(() {
-      _loading = true;
-      _error = '';
-    });
+    setState(() { _loading = true; _error = ''; });
     await Future.delayed(const Duration(milliseconds: 500));
 
     if (_controller.text == _password) {
@@ -44,10 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else {
-      setState(() {
-        _loading = false;
-        _error = 'Incorrect password. Please try again.';
-      });
+      setState(() { _loading = false; _error = 'Incorrect password. Please try again.'; });
     }
   }
 
@@ -60,44 +54,41 @@ class _LoginScreenState extends State<LoginScreen> {
         value: SystemUiOverlayStyle.light,
         child: Stack(
           children: [
-            // Background image — always full screen
+            // ── Background image ──
             Positioned.fill(
-              child: Image.asset(
-                'assets/images/login.jpg',
-                fit: BoxFit.cover,
-              ),
+              child: Image.asset('assets/images/login.jpg', fit: BoxFit.cover),
             ),
-            // Dark tint
+            // ── Dark tint ──
             Positioned.fill(
-              child: Container(color: const Color(0x3D050E0A)),
+              child: Container(color: const Color(0x80050E0A)),
             ),
-            // Top gradient
+            // ── Top gradient ──
             Positioned(
-              top: 0, left: 0, right: 0, height: 160,
+              top: 0, left: 0, right: 0, height: 220,
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF0a1912), Color(0xB20a1912), Colors.transparent],
+                    colors: [Color(0xFF0a1912), Color(0xDD0a1912), Colors.transparent],
                   ),
                 ),
               ),
             ),
-            // Bottom gradient
+            // ── Bottom gradient ──
             Positioned(
-              bottom: 0, left: 0, right: 0, height: 280,
+              bottom: 0, left: 0, right: 0, height: 400,
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0xD90a1912), Color(0xFF0a1912)],
+                    colors: [Colors.transparent, Color(0xF00a1912), Color(0xFF0a1912)],
                   ),
                 ),
               ),
             ),
-            // Scrollable content — moves up when keyboard opens
+            // ── Scrollable card ──
             SafeArea(
               child: SingleChildScrollView(
                 controller: _scrollController,
@@ -115,7 +106,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        // ✅ left/right margin so card doesn't touch edges
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                         child: _buildCard(),
                       ),
                     ],
@@ -131,45 +123,60 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildCard() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
       decoration: BoxDecoration(
-        color: const Color(0xE0081810),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x38D4AF37), width: 1.5),
+        color: const Color(0xEE081810),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0x55D4AF37), width: 1.5),
+        boxShadow: const [
+          BoxShadow(color: Colors.black54, blurRadius: 30, offset: Offset(0, 10)),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // App Logo
+          // ── Logo ──
           Container(
-            width: 80,
-            height: 80,
+            width: 88,
+            height: 88,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+              border: Border.all(color: const Color(0xFFD4AF37), width: 2.5),
               boxShadow: const [
-                BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
+                BoxShadow(color: Color(0x55D4AF37), blurRadius: 18, spreadRadius: 2),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(40),
+              borderRadius: BorderRadius.circular(44),
               child: Image.asset('assets/images/icon.jpg', fit: BoxFit.cover),
             ),
           ),
-          const SizedBox(height: 12),
-          // App title
+          const SizedBox(height: 14),
+
+          // ── Arabic title ──
           const Text(
             'القاعدة النورانية',
             style: TextStyle(
               color: Color(0xFFD4AF37),
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 4),
 
-          // Password input
+          // ── English subtitle ──
+          const Text(
+            'Al-Qaida Al-Nooraniya',
+            style: TextStyle(
+              color: Color(0x88D4AF37),
+              fontSize: 11,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // ── Password input ──
           Container(
             height: 54,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -194,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       hintText: 'Enter password...',
-                      hintStyle: TextStyle(color: Color(0x66C5A880)),
+                      hintStyle: TextStyle(color: Color(0x55C5A880)),
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -209,7 +216,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Icon(
-                      _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      _showPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
                       color: const Color(0xFFC5A880),
                       size: 20,
                     ),
@@ -219,12 +228,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
+          // ── Error message ──
           if (_error.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Row(
               children: [
                 const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 14),
-                const SizedBox(width: 4),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     _error,
@@ -235,9 +245,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
-          // Login button
+          // ── Enter button ──
           SizedBox(
             width: double.infinity,
             height: 54,
@@ -246,55 +256,35 @@ class _LoginScreenState extends State<LoginScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD4AF37),
                 disabledBackgroundColor: const Color(0x80D4AF37),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                elevation: 4,
-                shadowColor: const Color(0xFFD4AF37),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 6,
+                shadowColor: const Color(0x88D4AF37),
               ),
               child: _loading
                   ? const SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(color: Color(0xFF0f3425), strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                          color: Color(0xFF0f3425), strokeWidth: 2),
                     )
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('Enter',
-                            style: TextStyle(color: Color(0xFF0f3425), fontSize: 16, fontWeight: FontWeight.bold)),
+                            style: TextStyle(
+                                color: Color(0xFF0f3425),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5)),
                         SizedBox(width: 8),
-                        Icon(Icons.arrow_forward, color: Color(0xFF0f3425), size: 18),
+                        Icon(Icons.arrow_forward,
+                            color: Color(0xFF0f3425), size: 18),
                       ],
                     ),
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          // Footer
-          RichText(
-            text: TextSpan(
-              style: const TextStyle(color: Color(0x80C5A880), fontSize: 12),
-              children: [
-                const TextSpan(text: 'developed by '),
-                WidgetSpan(
-                  alignment: PlaceholderAlignment.middle,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: const Text(
-                      'Awash Dev',
-                      style: TextStyle(
-                        color: Color(0xFFD4AF37),
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                        decorationColor: Color(0xFFD4AF37),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // ✅ footer completely removed
         ],
       ),
     );

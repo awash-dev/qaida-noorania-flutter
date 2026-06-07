@@ -17,7 +17,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _page = 1;
   final _player = AudioPlayer();
   bool _playing = false;
-  bool _loadingAudio = false;
   bool _pickerVisible = false;
   bool _looping = false;
   Duration _position = Duration.zero;
@@ -25,10 +24,32 @@ class _HomeScreenState extends State<HomeScreen> {
   late PageController _pageController;
   bool _controlsVisible = true;
 
+  // Prebuilt playlist — all 23 tracks loaded once at start
+  late ConcatenatingAudioSource _playlist;
+
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _page - 1);
+    _pageController = PageController(initialPage: 0);
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    // Build playlist of all pages once
+    _playlist = ConcatenatingAudioSource(
+      children: List.generate(
+        _total,
+        (i) => AudioSource.asset('assets/audios/qaida voice ${i + 1}.m4a'),
+      ),
+    );
+
+    await _player.setAudioSource(
+      _playlist,
+      initialIndex: 0,
+      initialPosition: Duration.zero,
+      preload: true, // preload all tracks
+    );
+    await _player.setLoopMode(LoopMode.off);
 
     _player.positionStream.listen((pos) {
       if (mounted) setState(() => _position = pos);
@@ -39,14 +60,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _player.playingStream.listen((playing) {
       if (mounted) setState(() => _playing = playing);
     });
+    _player.currentIndexStream.listen((index) {
+      if (index != null && mounted) {
+        setState(() {
+          _page = index + 1;
+          _position = Duration.zero;
+        });
+        _pageController.jumpToPage(index);
+      }
+    });
     _player.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
-        if (mounted) {
-          setState(() {
-            _playing = false;
-            _position = Duration.zero;
-          });
-        }
+        if (mounted) setState(() { _playing = false; _position = Duration.zero; });
       }
     });
   }
@@ -58,58 +83,46 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  String _audioPath(int page) => 'assets/audios/qaida voice $page.m4a';
   String _imagePath(int page) => 'assets/images/$page.jpg';
 
-  Future<void> _loadPageAudio(int page, {bool autoPlay = false}) async {
-    try {
-      setState(() => _loadingAudio = true);
-      await _player.stop();
-      await _player.setAsset(_audioPath(page));
-      await _player.setLoopMode(_looping ? LoopMode.one : LoopMode.off);
-      if (autoPlay) await _player.play();
-    } catch (e) {
-      debugPrint('Audio error: $e');
-    } finally {
-      if (mounted) setState(() => _loadingAudio = false);
-    }
-  }
-
+  // Jump to page — instant, no loading
   Future<void> _goTo(int page) async {
     if (page < 1 || page > _total) return;
     final wasPlaying = _playing;
-    await _player.stop();
+    await _player.seek(Duration.zero, index: page - 1);
     setState(() {
       _page = page;
       _pickerVisible = false;
       _position = Duration.zero;
-      _duration = Duration.zero;
     });
     if (_pageController.hasClients &&
         (_pageController.page?.round() ?? 0) != page - 1) {
       _pageController.jumpToPage(page - 1);
     }
-    await _loadPageAudio(page, autoPlay: wasPlaying);
+    if (wasPlaying) {
+      await _player.play();
+    } else {
+      await _player.pause();
+    }
   }
 
   Future<void> _onPageSwiped(int index) async {
     final targetPage = index + 1;
     if (targetPage == _page) return;
     final wasPlaying = _playing;
-    await _player.stop();
+    await _player.seek(Duration.zero, index: index);
     setState(() {
       _page = targetPage;
       _position = Duration.zero;
-      _duration = Duration.zero;
     });
-    await _loadPageAudio(targetPage, autoPlay: wasPlaying);
+    if (wasPlaying) {
+      await _player.play();
+    } else {
+      await _player.pause();
+    }
   }
 
   Future<void> _handlePlayPause() async {
-    if (_player.processingState == ProcessingState.idle) {
-      await _loadPageAudio(_page, autoPlay: true);
-      return;
-    }
     if (_playing) {
       await _player.pause();
     } else {
@@ -118,7 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _handleStop() async {
-    await _player.stop();
+    await _player.pause();
+    await _player.seek(Duration.zero);
     setState(() => _position = Duration.zero);
   }
 
@@ -181,8 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius:
                       BorderRadius.circular(_controlsVisible ? 16 : 0),
                   border: _controlsVisible
-                      ? Border.all(
-                          color: const Color(0x38D4AF37), width: 1.2)
+                      ? Border.all(color: const Color(0x38D4AF37), width: 1.2)
                       : null,
                   boxShadow: _controlsVisible
                       ? const [
@@ -327,8 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
               thumbColor: const Color(0xFFD4AF37),
               overlayColor: const Color(0x22D4AF37),
               trackHeight: 3.5,
-              thumbShape:
-                  const RoundSliderThumbShape(enabledThumbRadius: 7),
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
             ),
             child: Slider(
               value: progress,
@@ -350,21 +362,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Color(0xFFD4AF37),
                         fontSize: 11,
                         fontWeight: FontWeight.w600)),
-                if (_loadingAudio)
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFD4AF37),
-                      strokeWidth: 1.5,
-                    ),
-                  )
-                else
-                  Text(_formatTime(_duration),
-                      style: const TextStyle(
-                          color: Color(0x99D4AF37),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500)),
+                Text(_formatTime(_duration),
+                    style: const TextStyle(
+                        color: Color(0x99D4AF37),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -376,30 +378,20 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               // Loop
-              _iconBtn(
-                icon: Icons.repeat,
-                onTap: _handleLoop,
-                active: _looping,
-              ),
+              _iconBtn(icon: Icons.repeat, onTap: _handleLoop, active: _looping),
               // -10s
-              _labeledIconBtn(
-                icon: Icons.replay_10,
-                label: '-10s',
-                onTap: _jumpBackward,
-              ),
+              _labeledIconBtn(icon: Icons.replay_10, label: '-10s', onTap: _jumpBackward),
               // Prev
               IconButton(
                 onPressed: _page > 1 ? () => _goTo(_page - 1) : null,
-                icon: Icon(
-                  Icons.skip_previous_rounded,
-                  color: _page > 1
-                      ? const Color(0xFFD4AF37)
-                      : const Color(0xFF3a4a40),
-                  size: 28,
-                ),
+                icon: Icon(Icons.skip_previous_rounded,
+                    color: _page > 1
+                        ? const Color(0xFFD4AF37)
+                        : const Color(0xFF3a4a40),
+                    size: 28),
                 padding: EdgeInsets.zero,
               ),
-              // Play / Pause
+              // Play / Pause — no spinner, instant
               GestureDetector(
                 onTap: _handlePlayPause,
                 child: Container(
@@ -415,47 +407,27 @@ class _HomeScreenState extends State<HomeScreen> {
                           offset: Offset(0, 4))
                     ],
                   ),
-                  child: _loadingAudio
-                      ? const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF0a1912),
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : Icon(
-                          _playing
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          color: const Color(0xFF0a1912),
-                          size: 34,
-                        ),
+                  child: Icon(
+                    _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: const Color(0xFF0a1912),
+                    size: 34,
+                  ),
                 ),
               ),
               // Next
               IconButton(
                 onPressed: _page < _total ? () => _goTo(_page + 1) : null,
-                icon: Icon(
-                  Icons.skip_next_rounded,
-                  color: _page < _total
-                      ? const Color(0xFFD4AF37)
-                      : const Color(0xFF3a4a40),
-                  size: 28,
-                ),
+                icon: Icon(Icons.skip_next_rounded,
+                    color: _page < _total
+                        ? const Color(0xFFD4AF37)
+                        : const Color(0xFF3a4a40),
+                    size: 28),
                 padding: EdgeInsets.zero,
               ),
               // +10s
-              _labeledIconBtn(
-                icon: Icons.forward_10,
-                label: '+10s',
-                onTap: _jumpForward,
-              ),
+              _labeledIconBtn(icon: Icons.forward_10, label: '+10s', onTap: _jumpForward),
               // Stop
-              _iconBtn(
-                icon: Icons.stop_rounded,
-                onTap: _handleStop,
-                active: false,
-              ),
+              _iconBtn(icon: Icons.stop_rounded, onTap: _handleStop, active: false),
             ],
           ),
         ],
@@ -478,11 +450,10 @@ class _HomeScreenState extends State<HomeScreen> {
           color: active ? const Color(0xFFD4AF37) : Colors.white10,
           shape: BoxShape.circle,
         ),
-        child: Icon(
-          icon,
-          color: active ? const Color(0xFF0a1912) : const Color(0xFFD4AF37),
-          size: size,
-        ),
+        child: Icon(icon,
+            color:
+                active ? const Color(0xFF0a1912) : const Color(0xFFD4AF37),
+            size: size),
       ),
     );
   }
@@ -524,8 +495,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.55),
-              padding:
-                  EdgeInsets.fromLTRB(16, 12, 16, padding.bottom + 12),
+              padding: EdgeInsets.fromLTRB(16, 12, 16, padding.bottom + 12),
               decoration: const BoxDecoration(
                 color: Color(0xFF0f2519),
                 borderRadius:
