@@ -22,7 +22,7 @@ class QaidaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'القاعدة النورانية',
+      title: 'አል ቃኢደቱ ነውራኒያ',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFD4AF37)),
