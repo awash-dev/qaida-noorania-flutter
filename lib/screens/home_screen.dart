@@ -212,6 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: PageView.builder(
                     controller: _pageController,
                     itemCount: _total,
+                    reverse: true, // ✅ Arabic right-to-left reading
                     onPageChanged: _onPageSwiped,
                     itemBuilder: (context, index) {
                       return GestureDetector(
